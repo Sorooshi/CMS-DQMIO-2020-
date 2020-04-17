@@ -8,14 +8,16 @@ import matplotlib.pyplot as plt
 import data_normalization as dn
 from matplotlib import colors as mcolors
 
+selected_runs = [297047, 297177, 299318, ]  # 297050, 297178, 299185,
+
 HISTOGRAM_NAMES = [
     'goodvtxNbr', 'adc_PXLayer_1', 'adc_PXLayer_2', 'adc_PXLayer_3',
     'adc_PXLayer_4', 'adc_PXDisk_+1', 'adc_PXDisk_+2', 'adc_PXDisk_+3',
     'adc_PXDisk_-1', 'adc_PXDisk_-2', 'adc_PXDisk_-3',
-     'num_clusters_ontrack_PXBarrel', 'num_clusters_ontrack_PXForward',
-     'chargeInner_PXLayer_1', 'chargeInner_PXLayer_2',
-     'chargeInner_PXLayer_3', 'chargeInner_PXLayer_4',
-     'chargeOuter_PXLayer_1', 'chargeOuter_PXLayer_2',
+    'num_clusters_ontrack_PXBarrel', 'num_clusters_ontrack_PXForward',
+    'chargeInner_PXLayer_1', 'chargeInner_PXLayer_2',
+    'chargeInner_PXLayer_3', 'chargeInner_PXLayer_4',
+    'chargeOuter_PXLayer_1', 'chargeOuter_PXLayer_2',
     'chargeOuter_PXLayer_3', 'chargeOuter_PXLayer_4', 'size_PXLayer_1',
     'size_PXLayer_2', 'size_PXLayer_3', 'size_PXLayer_4',
     'charge_PXDisk_+1', 'charge_PXDisk_+2', 'charge_PXDisk_+3',
@@ -133,8 +135,8 @@ def parse_arguments(arguments):
 def load_process_a_df(path):
 
     """
-     loads a Pandas DataFrame and sorts in ascending order regarding Run number and Lumisection number.
-     Also converts all the strings are converted to integers.  
+     loads a Pandas DataFrame and sorts in ascending order w.r.t the run number and the Lumisection number.
+        Also converts all the strings to integers.
     :param path: path to load a Pandas DataFrame.
     :return: a preprocessed Pandas DataFrame
     """
@@ -153,7 +155,7 @@ def load_process_a_df(path):
     return df
 
 
-def convert_df_to_np_array_for_per_histogram(df, name_of_histo):
+def convert_df_to_np_array_per_a_histogram(df, name_of_histo,):
 
     """
     loads a preprocessed DataFrame and returns:
@@ -179,92 +181,111 @@ def convert_df_to_np_array_for_per_histogram(df, name_of_histo):
     stats = {}
 
     for run in df['fromrun'].unique():
-        print("run:", run)
-        inconsistencies[run] = []
-        n_histo, histos, histos_len = [], [], []
-        stats[run] = {}
-        for ls in df['fromlumi'][run]:
-            try:
-                n_histo.append(ls)  # number of iterators
-                a_histo = df.loc[df['hname'] == name_of_histo]['histo'][run][ls]
-                histos.append(a_histo)
-                histos_len.append(len(a_histo))
-            except (ValueError, KeyError, TypeError):
-                inconsistencies[run].append((run, ls, name_of_histo))
 
-        histos = np.asarray(histos)
-        histos_len = np.asarray(histos_len)
-        histo_names = df[(df['fromrun'] == run)]['hname'].unique()  # i.e 'hname'
-        histograms[run] = histos
+        if run in selected_runs:
+            print("run:", run)
+            inconsistencies[run] = []
+            n_histo, histos, histos_len = [], [], []
+            stats[run] = {}
+            for ls in df['fromlumi'][run]:
+                try:
+                    tmp = df.loc[df['hname'] == name_of_histo]['histo'][run][ls]
+                    if not isinstance(tmp, pd.Series):
+                        a_histo = tmp
+                    else:
+                        tmp = list(tmp)
+                        a_histo = tmp[0]
 
-        stats[run]['ls'] = set(n_histo)
-        stats[run]['n_ls'] = len(set(n_histo))
-        stats[run]['histo_names'] = histo_names
-        stats[run]['n_histo'] = len(histo_names)
-        stats[run]['n_iters'] = len(n_histo)
-        stats[run]['ave_len_histo'] = np.mean(histos_len, axis=0)
-        stats[run]['std_len_histo'] = np.std(histos_len, axis=0)
-        stats[run]['ave_histo'] = np.mean(histos, axis=0)
-        stats[run]['std_histo'] = np.std(histos, axis=0)
+                    n_histo.append(ls)  # number of iterators
+                    histos.append(a_histo)
+                    histos_len.append(len(a_histo))
+                except (ValueError, KeyError, TypeError):
+                    inconsistencies[run].append((run, ls, name_of_histo))
+
+            histos = np.asarray(histos)
+            histos_len = np.asarray(histos_len)
+            histo_names = df[(df['fromrun'] == run)]['hname'].unique()  # i.e 'hname'
+            histograms[run] = histos
+
+            stats[run]['ls'] = set(n_histo)
+            stats[run]['n_ls'] = len(set(n_histo))
+            stats[run]['histo_names'] = histo_names
+            stats[run]['n_histo'] = len(histo_names)
+            stats[run]['n_iters'] = len(n_histo)
+            stats[run]['ave_len_histo'] = np.mean(histos_len, axis=0)
+            stats[run]['std_len_histo'] = np.std(histos_len, axis=0)
+            stats[run]['ave_histo'] = np.mean(histos, axis=0)
+            stats[run]['std_histo'] = np.std(histos, axis=0)
 
     return histograms, stats, inconsistencies
 
 
 def plot_per_histograms(histograms, name_of_histo, data_name,
                         path_to_store='/home/sshalileh/ml4dc/figs-2020'):
+    """
+    :param histograms: a dict of run obtained from function "convert_df_to_np_array_for_per_histogram"
+    :param name_of_histo: string, name of specific histogram
+    :param data_name: string, data set name
+    :param path_to_store: string, path for storing the figures
+    :return: a list of runs which contains constant histograms for all the Lumisections
+    """
 
     runs_containing_constant_features = []
 
     for run, v in histograms.items():
-        print("plotting " + name_of_histo + " in run: " + run)
-        x_min, x_max = 0, 80000
-        nbins = v.shape[1]
-        fig, axes = plt.subplots(ncols=2, figsize=(10.5, 6.5))
-        ax = axes[0]
-        i = 0
-        for row in range(v.shape[0]):
-            a_hist = v[row]
+
+        if run in selected_runs:
+            print("plotting " + name_of_histo + " in run: " + str(run))
+            x_min, x_max = 0, 80000
+            nbins = v.shape[1]
+            fig, axes = plt.subplots(ncols=2, figsize=(10.5, 6.5))
+            ax = axes[0]
+            i = 0
+            for row in range(v.shape[0]):
+                a_hist = v[row]
+                x = np.linspace(x_min, x_max, nbins)
+                ax.step(x, a_hist, color=plots_colors[i % 9], alpha=0.9, )
+                ax.set_xlabel('bins range', fontsize=10)
+                ax.set_ylabel('entries', fontsize=10)
+                ax.set_xlim([x_min, x_max])
+                # ax.set_ylim([0.0, 1.05])
+                # ax.tick_params(axis='x', labelsize=10)
+                # ax.tick_params(axis='N', labelsize=10)
+                hname = name_of_histo.split("_")
+                hname = " ".join(hname)
+                ax.set_title("run:" + str(run) + " " + hname, fontsize=12)
+                i += 1
+
+            ax = axes[1]
             x = np.linspace(x_min, x_max, nbins)
-            ax.step(x, a_hist, color=plots_colors[i % 9], alpha=0.9, )
+            hname = name_of_histo.split("_")
+            hname = " ".join(hname)
+
+            ax.step(x, np.mean(v, axis=0), color=summarization_colors[0],
+                    where='mid', label='All Histo. Ave.', alpha=0.9, )
+            ax.step(x, np.std(v, axis=0), color=summarization_colors[1],
+                    where='mid', label='All Histo. Std.', alpha=0.9, )
             ax.set_xlabel('bins range', fontsize=10)
             ax.set_ylabel('entries', fontsize=10)
             ax.set_xlim([x_min, x_max])
             # ax.set_ylim([0.0, 1.05])
-            ax.tick_params(axis='x', labelsize=10)
-            ax.tick_params(axis='N', labelsize=10)
-            hname = name_of_histo.split("_")
-            hname = " ".join(hname)
-            ax.set_title("run:" + str(run) + " " + hname, fontsize=12)
-            i += 1
-        ax = axes[1]
-        x = np.linspace(x_min, x_max, nbins)
-        hname = name_of_histo.split("_")
-        hname = " ".join(hname)
-        ax.step(x, np.mean(v, axis=0), color=summarization_colors[0],
-                where='mid', label='All Histo. Ave.', alpha=0.9, )
-        ax.step(x, np.std(v, axis=0), color=summarization_colors[1],
-                where='mid', label='All Histo. Std.', alpha=0.9, )
-        ax.set_xlabel('bins range', fontsize=10)
-        ax.set_ylabel('entries', fontsize=10)
-        ax.set_xlim([x_min, x_max])
-        # ax.set_ylim([0.0, 1.05])
-        ax.tick_params(axis='x', labelsize=10)
-        ax.tick_params(axis='N', labelsize=10)
-        ax.set_title(" run:" + str(run) + " " + hname, fontsize=12)
-        x_cnst_free, x_rel_cntr, x_zsc, x_zsc_rel_cntr, x_rng, x_rng_rel_cntr, cnst_features = dn.preprocess_Y(
-            Yin=v, nscf={})
-        if x_cnst_free.shape[0] == 0:
-            runs_containing_constant_features.append(run)
-        plt.legend(loc='best')
-        # plt.show()
+            # ax.tick_params(axis='x', labelsize=10)
+            # ax.tick_params(axis='N', labelsize=10)
+            ax.set_title(" run:" + str(run) + " " + hname, fontsize=12)
+            x_cnst_free, x_rel_cntr, x_zsc, x_zsc_rel_cntr, x_rng, x_rng_rel_cntr, cnst_features = dn.preprocess_Y(
+                Yin=v, nscf={})
+            if x_cnst_free.shape[0] == 0:
+                runs_containing_constant_features.append(run)
+            plt.legend(loc='best')
+            plt.show()
 
-        if not os.path.exists(path_to_store):
-            os.mkdir(path_to_store)
+            if not os.path.exists(path_to_store):
+                os.mkdir(path_to_store)
 
-        dir_path = os.path.join(path_to_store, data_name)
-        if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
-        fig.savefig(os.path.join(dir_path, str(run) + '-' + hname + '.png'))
+            dir_path = os.path.join(path_to_store, data_name)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+            fig.savefig(os.path.join(dir_path, str(run) + '-' + hname + '.png'))
 
     return runs_containing_constant_features
 
@@ -295,9 +316,8 @@ if __name__ == '__main__':
 
         print("name of histpgram:", name_of_histo)
 
-        histograms, stats, inconsistencies = convert_df_to_np_array_for_per_histogram(df=df_processed,
-                                                                                      name_of_histo=name_of_histo
-                                                                                      )
+        histograms, stats, inconsistencies = convert_df_to_np_array_per_a_histogram(df=df_processed,
+                                                                                    name_of_histo=name_of_histo)
 
         tmp = path_of_a_df.split("/")
         tmp = tmp[-1]
@@ -305,8 +325,8 @@ if __name__ == '__main__':
         data_name = tmp[0] + "-" + tmp[-2] + "-" + tmp[-1].split(".")[0]
 
         runs_containing_constant_features = plot_per_histograms(histograms=histograms,
-                            name_of_histo=name_of_histo,
-                            data_name=data_name)
+                                                                name_of_histo=name_of_histo,
+                                                                data_name=data_name)
 
         histograms_total[name_of_histo] = histograms
         stats_total[name_of_histo] = stats
