@@ -97,18 +97,20 @@ def convert_df_to_np_array_per_a_histogram(df, name_of_histo, selected_run):
             print("feature's len:", dim)
 
             histos = np.array([]).reshape(dim, 0)
-            labels = np.array([]).reshape(1, 0)
+            labels = np.array([])
+            previous_LSs = []
 
             for i, row in df_of_selected_run.iterrows():
                 ls = row['fromlumi']
-                a_histo = row['histo']  # later I may need to modify this so that it is applicable for list of list
-                label = check_ls(json_data=json_data, run=run, ls=ls)
-                a_histo = a_histo.split("[")[1].split("]")[0]
-                a_histo = a_histo.split(", ")
-                a_histo = [int(i) for i in a_histo]
-                histos = np.c_[histos, a_histo]
-                labels = np.c_[labels, label]
-                # histos.append(a_histo)
+                if ls not in previous_LSs:
+                    a_histo = row['histo']
+                    label = check_ls(json_data=json_data, run=run, ls=ls)
+                    a_histo = a_histo.split("[")[1].split("]")[0]
+                    a_histo = a_histo.split(", ")
+                    a_histo = [int(i) for i in a_histo]
+                    histos = np.c_[histos, a_histo]
+                    labels = np.r_[labels, label]
+                    previous_LSs.append(ls)
 
             histos = histos.T
             labels = labels.T
@@ -117,7 +119,7 @@ def convert_df_to_np_array_per_a_histogram(df, name_of_histo, selected_run):
     return histos, labels
 
 
-def train_val_test_splitter(Xg, Xb, n_repeats=5, settings=[(0.98, 0.02)], ):
+def train_val_test_splitter(Xg, Xb, n_repeats=5, settings=[(0.98, 0.02)],):
 
     DATA = {}
 
@@ -185,20 +187,20 @@ if __name__ == '__main__':
 
     selected_run, name_of_histo = parse_argument(args=args)
 
-    """ 
     # Loading all the stored DataFrames
     all_paths = glob.glob('/home/fratnikov/cms/ml4dc/ML_2020/UL2017_Data/*_1D_*/*.csv')
 
     print("len of loaded files:", len(all_paths))
 
-    df_list = []
-    for path in all_paths:
-        df_list.append(load_process_a_df(path=path))
+    # df_list = []
+    # for path in all_paths:
+    #     df_list.append(load_process_a_df(path=path))
+    #
+    # # Concatenating all 1D processed DataFrames into one DataFrame
+    # df = pd.concat(df_list, axis=0, ignore_index=True)
+    # df.to_csv("/home/sshalileh/ml4dc/matrices/all_runs_df.csv")
 
-    # Concatenating all 1D processed DataFrames into one DataFrame
-    df = pd.concat(df_list, axis=0, ignore_index=True)
-    """
-    # once I run the chunk of code above and because it very time consuming I decided to save the df ...
+    # # once I run the chunk of code above and because it very time consuming I decided to save the df ...
     df = pd.read_csv("/home/sshalileh/ml4dc/matrices/all_runs_df.csv")
 
     print(df.head())
