@@ -56,7 +56,7 @@ def check_ls(json_data, run, ls):
     return is_ok
 
 
-def convert_df_to_np_array_per_a_histogram(df, name_of_histo, ):
+def convert_df_to_np_array_per_a_histogram(df, name_of_histo,):
 
     """
     loads a preprocessed DataFrame and returns:
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    name_of_histo = parse_argument(args=args)
+    # name_of_histo = parse_argument(args=args)
 
     # Loading all the stored DataFrames
     all_paths = glob.glob('/home/fratnikov/cms/ml4dc/ML_2020/UL2017_Data/*_1D_*/*.csv')
@@ -241,34 +241,34 @@ if __name__ == '__main__':
 
     print(df.head())
 
+    name_of_histo = df['hname'].unique()
+
     for histogram_name in name_of_histo:
 
         print("histogram:", histogram_name)
 
         numpy_array, labels, indices = convert_df_to_np_array_per_a_histogram(df=df, name_of_histo=histogram_name,)
 
-        # np.savetxt(os.path.join(path_to_store,
-        #                         str(selected_run[0]) + "-" + histogram_name + '.npy'), numpy_array)
+        np.savetxt(os.path.join(path_to_store, histogram_name + '.npy'), numpy_array)
+
+        np.savetxt(os.path.join(path_to_store, histogram_name + '-labels.npy'), labels)
+
+        # Xg = numpy_array[np.where(labels == 1), :]
+        # Xb = numpy_array[np.where(labels == 0), :]
+        # Ig = indices[np.where(labels == 1)]
+        # Ib = indices[np.where(labels == 0)]
+        # Xg = Xg[0]
+        # Xb = Xb[0]
+        # Ig = Ig[0]
+        # Ib = Ib[0]
         #
-        # np.savetxt(os.path.join(path_to_store,
-        #                         str(selected_run[0]) + "-" + histogram_name + '-labels.npy'), labels)
-
-        Xg = numpy_array[np.where(labels == 1), :]
-        Xb = numpy_array[np.where(labels == 0), :]
-        Ig = indices[np.where(labels == 1)]
-        Ib = indices[np.where(labels == 0)]
-        Xg = Xg[0]
-        Xb = Xb[0]
-        Ig = Ig[0]
-        Ib = Ib[0]
-
-        print("before split:", Xg.shape, Xb.shape)
-        print(" ")
-
-        data = train_val_test_splitter(Xg=Xg, Xb=Xb, Ig=Ig, Ib=Ib, settings=[(0.98, 0.02), ])
-
-        with open(os.path.join(path_to_store, histogram_name + '.pickle'), 'wb') as fp:
-            pickle.dump(data, fp)
+        # print("before split:", Xg.shape, Xb.shape)
+        # print(" ")
+        #
+        # data = train_val_test_splitter(Xg=Xg, Xb=Xb, Ig=Ig, Ib=Ib, settings=[(0.98, 0.02), ])
+        #
+        # with open(os.path.join(path_to_store, histogram_name + '.pickle'), 'wb') as fp:
+        #     pickle.dump(data, fp)
 
 
 
